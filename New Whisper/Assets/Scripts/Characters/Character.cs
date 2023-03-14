@@ -20,35 +20,41 @@ public class Character : MonoBehaviour
     //The current state of the character
     public TurnState currentState;
 
+    BattleManager battleManager;
+
     #region Stats
     //HP Stat for the Character
-    [SerializeField] float maxHP = 0;
-    [SerializeField] float currentHP = 0;
+    public float maxHP = 0;
+    public float currentHP = 0;
 
     //Attack Stat for the Character
-    [SerializeField] float Attack = 0;
-    [SerializeField] float currentAttack = 0;
+    public float Attack = 0;
+    public float currentAttack = 0;
 
     //Defense Stat for the Character
     [SerializeField] float Defense = 0;
-    [SerializeField] float currentDefense = 0;
+    public float currentDefense = 0;
 
     //Magic Stat for the Character
-    [SerializeField] float Magic = 0;
-    [SerializeField] float currentMagic = 0;
+    public float Magic = 0;
+    public float currentMagic = 0;
 
     //Magic Points Stat for the Character
-    [SerializeField] float maxMP = 0;
-    [SerializeField] float currMP = 0;
+    public float maxMP = 0;
+    public float currMP = 0;
 
     //How much Charge the character needs to attack
-    [SerializeField] float maxCharge = 5f;
+    public float maxCharge = 5f;
 
     //Character's current Charge
-    [SerializeField] float currentCharge = 0f;
+    public float currentCharge = 0f;
 
     //Character's charge rate
-    [SerializeField] float chargeRate = 1f;
+    public float chargeRate = 1f;
+
+    public Type Type = Type.Normas;
+
+    public float multihitMultiplier = .8f;
     #endregion
 
     //Visual Indicator for being able to attack
@@ -56,6 +62,8 @@ public class Character : MonoBehaviour
 
     //Damage Indicator
     [SerializeField] GameObject damageIndicator;
+
+    public GameObject Choosen;
 
     //Whether the character is blocking
     public bool isBlocking = false;
@@ -74,6 +82,8 @@ public class Character : MonoBehaviour
         //Sets the stats correctly at the start of the fight (in case I don't fix something)
         currentAttack = Attack;
         currentDefense = Defense;
+
+        currentCharge = Random.Range(0, 3 * maxCharge / 5);
 
     }
 
@@ -108,10 +118,99 @@ public class Character : MonoBehaviour
     }
 
     /// <summary>
-    /// Handles the Character doing Damage
+    /// Helps moves being done.
     /// </summary>
-    void DoDamage()
+    void Target()
     {
+        Attack attack = battleManager.PerformList[0].choosenAttack;
+        
+        if(attack.target == global::Attack.Targeting.Single)
+        {
+            DealDamage(Choosen, attack);
+        }
 
-    }    
+        if (attack.target == global::Attack.Targeting.Multiple)
+        {
+            if (attack.GetComponentsInParent<Enemy>() != null)
+            {
+                DealDamage(battleManager.Allies, attack);
+            }
+            else
+            {
+                DealDamage(battleManager.Enemies, attack);
+            }
+        }
+        battleManager.CheckAlive();
+    }   
+    
+    /// <summary>
+    /// Damages single character
+    /// </summary>
+    /// <param name="Target"></param>
+    /// <param name="attack"></param>
+    void DealDamage(GameObject Target, Attack attack)
+    {
+        int calcDamage;
+        float block = 1f;
+        Character targeted = Target.GetComponent<Character>();
+        Type type = targeted.Type;
+
+        float typeModifier = TypeChart.GetEffectiveness(attack.type, type);
+
+        if (targeted.isBlocking)
+        {
+            block = .5f;
+        }
+        else
+        {
+            block = 1f;
+        }
+
+        if (attack.style == global::Attack.Style.Physical)
+        {
+            calcDamage = Mathf.Clamp((int)((attack.GetComponentInParent<Character>().currentAttack + attack.Damage - targeted.currentDefense) * typeModifier * block), 1, 99999);
+        }
+        else
+        {
+            calcDamage = Mathf.Clamp((int)((attack.GetComponentInParent<Character>().currentMagic + attack.Damage - targeted.currentMagic) * typeModifier * block), 1, 99999);
+        }
+    }
+
+    /// <summary>
+    /// Multihit attacks
+    /// </summary>
+    /// <param name="Targets"></param>
+    /// <param name="attack"></param>
+    void DealDamage(List<GameObject> Targets, Attack attack)
+    {
+        int calcDamage;
+        float block = 1f;
+        foreach(GameObject target in Targets)
+        {
+            Character targeted = target.GetComponent<Character>();
+            Type type = targeted.Type;
+
+            float typeModifier = TypeChart.GetEffectiveness(attack.type, type);
+
+            if(targeted.isBlocking)
+            {
+                block = .5f;
+            }
+            else
+            {
+                block = 1f;
+            }
+
+            if(attack.style == global::Attack.Style.Physical)
+            {
+                calcDamage = Mathf.Clamp((int)((attack.GetComponentInParent<Character>().currentAttack + attack.Damage - targeted.currentDefense) * multihitMultiplier * typeModifier * block), 1, 99999);
+            }
+            else
+            {
+                calcDamage = Mathf.Clamp((int)((attack.GetComponentInParent<Character>().currentMagic + attack.Damage - targeted.currentMagic) * multihitMultiplier * typeModifier * block), 1, 99999);
+            }
+
+            targeted.TakeDamage(calcDamage);
+        }
+    }
 }

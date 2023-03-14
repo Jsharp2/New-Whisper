@@ -12,7 +12,9 @@ public class Attack : MonoBehaviour
         Single,         //Hits single target
         Multiple,       //Hits multiple targets
         Self,           //Targets user
-        Ally            //Targets ally
+        Ally,           //Targets ally
+        AllyMultiple,   //Targets all Allies
+        Everyone
     }
 
     /// <summary>
@@ -32,6 +34,9 @@ public class Attack : MonoBehaviour
 
     //Default MP cost for the Attack
     public int attackCosst = 0;
+
+    //Default Damage Amount
+    public int Damage = 0;
 
     //Default Typing of Attack
     public Type type = Type.Normas;
